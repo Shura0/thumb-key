@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
 import java.util.concurrent.Executors
 
 const val DEFAULT_KEY_SIZE = 64
@@ -232,6 +233,11 @@ data class AppSettings(
         defaultValue = DEFAULT_GHOST_KEYS_ENABLED.toString(),
     )
     val ghostKeysEnabled: Int,
+    @ColumnInfo(
+        name = "macros_list",
+        defaultValue = "[]"
+    )
+    val macrosList: String,
 )
 
 data class LayoutsUpdate(
@@ -344,6 +350,12 @@ data class BehaviorUpdate(
     val ghostKeysEnabled: Int,
 )
 
+data class MacrosUpdate(
+    val id: Int,
+    @ColumnInfo(name = "macros_list")
+    val macrosList: String,
+)
+
 @Dao
 interface AppSettingsDao {
     @Query("SELECT * FROM AppSettings limit 1")
@@ -360,6 +372,9 @@ interface AppSettingsDao {
 
     @Update(entity = AppSettings::class)
     fun updateBehavior(behavior: BehaviorUpdate)
+
+    @Update(entity = AppSettings::class)
+    fun updateMacros(macros: MacrosUpdate)
 
     @Query("UPDATE AppSettings SET last_version_code_viewed = :versionCode")
     suspend fun updateLastVersionCode(versionCode: Int)
@@ -395,6 +410,11 @@ class AppSettingsRepository(
     @WorkerThread
     fun updateBehavior(behavior: BehaviorUpdate) {
         appSettingsDao.updateBehavior(behavior)
+    }
+
+    @WorkerThread
+    fun updateMacros(macros: MacrosUpdate) {
+        appSettingsDao.updateMacros(macros)
     }
 
     @WorkerThread
@@ -582,8 +602,17 @@ val MIGRATION_15_16 =
         }
     }
 
+val MIGRATION_16_17 =
+    object : Migration(16, 17) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "alter table AppSettings add column macros_list TEXT NOT NULL DEFAULT '[]'"
+            )
+        }
+    }
+
 @Database(
-    version = 16,
+    version = 17,
     entities = [AppSettings::class],
     exportSchema = true,
 )
@@ -621,6 +650,7 @@ abstract class AppDB : RoomDatabase() {
                             MIGRATION_13_14,
                             MIGRATION_14_15,
                             MIGRATION_15_16,
+                            MIGRATION_16_17,
                         )
                         // Necessary because it can't insert data on creation
                         .addCallback(
@@ -654,6 +684,8 @@ class AppSettingsViewModel(
     val appSettings = repository.appSettings
     val changelog = repository.changelog
 
+    var readyMacrosList = listOf<Pair<String, String>>()
+
     fun update(appSettings: AppSettings) =
         viewModelScope.launch {
             repository.update(appSettings)
@@ -672,6 +704,16 @@ class AppSettingsViewModel(
     fun updateBehavior(behavior: BehaviorUpdate) =
         viewModelScope.launch {
             repository.updateBehavior(behavior)
+        }
+
+    fun updateMacros(macros: List<Pair<String, String>>) =
+        viewModelScope.launch {
+            readyMacrosList = macros
+            repository.updateMacros(
+                MacrosUpdate(
+                id = 1,
+                macrosList = Json.encodeToString(macros)
+            ))
         }
 
     fun updateLastVersionCodeViewed(versionCode: Int) =

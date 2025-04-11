@@ -9,6 +9,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.text.InputType
+import kotlinx.serialization.json.Json
 import android.util.Log
 import android.view.KeyEvent
 import android.view.inputmethod.EditorInfo
@@ -357,6 +358,7 @@ fun performKeyAction(
             } else { // To return to MAIN mode after a shifted key action.
                 onAutoCapitalize(false)
             }
+            userMacrosProcessor(ime)
         }
 
         is KeyAction.SendEvent -> {
@@ -1272,6 +1274,9 @@ fun keyboardLayoutsSetFromDbIndexString(layouts: String?): Set<KeyboardLayout> =
             KeyboardLayout.entries[DEFAULT_KEYBOARD_LAYOUT],
         )
 
+fun macrosesFromDbIndexString(macroses: String?): List<Pair<String, String>> =
+    Json.decodeFromString<List<Pair<String, String>>>(macroses ?: "[]")
+
 fun Context.getPackageInfo(): PackageInfo =
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         packageManager.getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(0))
@@ -1412,4 +1417,11 @@ fun updateLayouts(
                     .joinToString(),
         ),
     )
+}
+
+fun updateMacros(
+    appSettingsViewModel: AppSettingsViewModel,
+    macros: List<Pair<String, String>>,
+) {
+    appSettingsViewModel.updateMacros(macros)
 }

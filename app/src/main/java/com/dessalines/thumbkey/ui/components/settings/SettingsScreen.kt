@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.HelpCenter
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.InstallMobile
+import androidx.compose.material.icons.outlined.Keyboard
 import androidx.compose.material.icons.outlined.KeyboardAlt
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Restore
@@ -150,6 +151,16 @@ fun SettingsScreen(
                             )
                         },
                         onClick = { navController.navigate("behavior") },
+                    )
+                    Preference(
+                        title = { Text(stringResource(R.string.macros)) },
+                        icon = {
+                            Icon(
+                                imageVector = Icons.Outlined.Keyboard,
+                                contentDescription = null,
+                            )
+                        },
+                        onClick = { navController.navigate("macros") },
                     )
                     Preference(
                         title = { Text(stringResource(R.string.backup_and_restore)) },
